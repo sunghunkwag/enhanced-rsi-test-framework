@@ -1,0 +1,9 @@
+# Enhanced RSI Test Framework Dependencies
+
+# Core scientific computing
+numpy>=1.24.0
+scipy>=1.10.0
+
+# Optional: For visualization and reporting
+# matplotlib>=3.7.0
+# pandas>=2.0.0
