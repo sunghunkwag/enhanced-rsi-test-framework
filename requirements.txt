@@ -3,6 +3,7 @@
 # Core scientific computing
 numpy>=1.24.0
 scipy>=1.10.0
+sortedcontainers>=2.4.0
 
 # Optional: For visualization and reporting
 # matplotlib>=3.7.0
