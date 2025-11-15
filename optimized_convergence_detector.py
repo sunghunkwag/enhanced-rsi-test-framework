@@ -54,7 +54,8 @@ class OptimizedEnhancedConvergenceDetector:
         self.hv_squared_sum += new_hv ** 2
         
         # Update exploration tracking
-        if exploration_activity > self.exploration_threshold:
+        is_exploring = exploration_activity > self.exploration_threshold
+        if is_exploring:
             self.exploration_volatility = exploration_activity
             self.steps_since_last_exploration = 0
         else:
@@ -63,10 +64,19 @@ class OptimizedEnhancedConvergenceDetector:
         # Calculate convergence status
         converged, volatility = self._check_convergence()
         
+        # Determine state string for compatibility
+        if converged:
+            state = 'CONVERGED'
+        elif is_exploring:
+            state = 'EXPLORING'
+        else:
+            state = 'IMPROVING'
+        
         return {
+            'state': state,
             'converged': converged,
             'volatility': volatility,
-            'exploring': exploration_activity > self.exploration_threshold,
+            'exploring': is_exploring,
             'steps_since_exploration': self.steps_since_last_exploration,
             'current_hv': new_hv,
             'mean_hv': self.hv_sum / len(self.hv_history) if self.hv_history else 0.0
@@ -117,6 +127,8 @@ class OptimizedEnhancedConvergenceDetector:
         
         if n == 0:
             return {
+                'total_updates': 0,
+                'current_state': 'INITIALIZING',
                 'window_fill': 0.0,
                 'mean_hv': 0.0,
                 'volatility': float('inf'),
@@ -128,7 +140,20 @@ class OptimizedEnhancedConvergenceDetector:
         variance = max(0.0, mean_of_squares - (mean ** 2))
         volatility = np.sqrt(variance) / mean if mean > 0 else float('inf')
         
+        # Determine current state
+        converged = volatility < self.volatility_threshold
+        is_exploring = self.steps_since_last_exploration == 0
+        
+        if converged:
+            current_state = 'CONVERGED'
+        elif is_exploring:
+            current_state = 'EXPLORING'
+        else:
+            current_state = 'IMPROVING'
+        
         return {
+            'total_updates': n,
+            'current_state': current_state,
             'window_fill': n / self.window_size,
             'mean_hv': mean,
             'volatility': volatility,

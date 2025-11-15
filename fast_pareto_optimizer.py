@@ -1,19 +1,33 @@
 from sortedcontainers import SortedList
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Dict
 import numpy as np
 
 
 class FastParetoOptimizer:
     """Efficient Pareto frontier optimizer using sorted containers."""
     
-    def __init__(self, num_objectives: int = 2, reference_point: Optional[List[float]] = None):
+    def __init__(self, objective_directions: Dict[str, str] = None,
+                 num_objectives: int = None,
+                 reference_point: Optional[List[float]] = None):
         """
         Args:
-            num_objectives: Number of objectives to optimize
+            objective_directions: Dict mapping objective names to 'maximize' or 'minimize'
+                                 e.g., {'performance': 'maximize', 'cost': 'minimize'}
+            num_objectives: Number of objectives (used if objective_directions not provided)
             reference_point: Reference point for hypervolume calculation
         """
-        self.num_objectives = num_objectives
-        self.reference_point = reference_point or [0.0] * num_objectives
+        if objective_directions is not None:
+            self.objective_names = list(objective_directions.keys())
+            self.num_objectives = len(self.objective_names)
+            self.directions = [objective_directions[name] for name in self.objective_names]
+        elif num_objectives is not None:
+            self.objective_names = [f'obj_{i}' for i in range(num_objectives)]
+            self.num_objectives = num_objectives
+            self.directions = ['maximize'] * num_objectives
+        else:
+            raise ValueError("Either objective_directions or num_objectives must be provided")
+        
+        self.reference_point = reference_point or [0.0] * self.num_objectives
         
         # Use SortedList for O(log n) insertion and efficient range queries
         # Sort by first objective for efficient dominance checking
@@ -22,16 +36,35 @@ class FastParetoOptimizer:
         # Track hypervolume history
         self.hv_history = []
         
-    def add_solution(self, solution: Tuple[float, ...]) -> dict:
+        # Metadata storage
+        self.solution_metadata = {}
+    
+    def add_solution(self, objectives: Dict[str, float] = None, 
+                    solution_tuple: Tuple[float, ...] = None,
+                    metadata: Optional[Dict] = None) -> dict:
         """
         Add solution to frontier and update Pareto set.
         
         Args:
-            solution: Tuple of objective values
+            objectives: Dict mapping objective names to values
+            solution_tuple: Tuple of objective values (alternative to objectives dict)
+            metadata: Optional metadata to store with solution
             
         Returns:
             Dict with update information
         """
+        # Convert dict to tuple if provided, applying direction transformations
+        if objectives is not None:
+            solution = tuple(
+                objectives[name] if self.directions[i] == 'maximize' 
+                else -objectives[name]
+                for i, name in enumerate(self.objective_names)
+            )
+        elif solution_tuple is not None:
+            solution = solution_tuple
+        else:
+            raise ValueError("Either objectives or solution_tuple must be provided")
+        
         if len(solution) != self.num_objectives:
             raise ValueError(f"Expected {self.num_objectives} objectives, got {len(solution)}")
         
@@ -49,6 +82,10 @@ class FastParetoOptimizer:
         
         # Add new solution to frontier
         self.frontier.add(solution)
+        
+        # Store metadata
+        if metadata:
+            self.solution_metadata[solution] = metadata
         
         # Update hypervolume
         new_hv = self._calculate_hypervolume()
@@ -110,6 +147,9 @@ class FastParetoOptimizer:
         # Remove dominated solutions
         for sol in to_remove:
             self.frontier.remove(sol)
+            # Remove metadata if exists
+            if sol in self.solution_metadata:
+                del self.solution_metadata[sol]
         
         return len(to_remove)
     
@@ -217,9 +257,43 @@ class FastParetoOptimizer:
         # Hypervolume approximation
         return (dominated_count / samples) * box_volume
     
-    def get_frontier(self) -> List[Tuple[float, ...]]:
-        """Get current Pareto frontier."""
-        return list(self.frontier)
+    def get_frontier(self) -> List[Dict[str, float]]:
+        """
+        Get current Pareto frontier as list of dicts.
+        
+        Returns:
+            List of dicts with objective names as keys
+        """
+        frontier_dicts = []
+        for solution_tuple in self.frontier:
+            solution_dict = {
+                self.objective_names[i]: (
+                    solution_tuple[i] if self.directions[i] == 'maximize'
+                    else -solution_tuple[i]
+                )
+                for i in range(self.num_objectives)
+            }
+            frontier_dicts.append(solution_dict)
+        return frontier_dicts
+    
+    def calculate_hypervolume(self, reference: Dict[str, float]) -> float:
+        """
+        Calculate hypervolume with named reference point.
+        
+        Args:
+            reference: Dict mapping objective names to reference values
+            
+        Returns:
+            Hypervolume value
+        """
+        # Convert reference dict to tuple
+        self.reference_point = [
+            reference[name] if self.directions[i] == 'maximize'
+            else -reference[name]
+            for i, name in enumerate(self.objective_names)
+        ]
+        
+        return self._calculate_hypervolume()
     
     def get_hypervolume_history(self) -> List[float]:
         """Get hypervolume history."""
@@ -229,7 +303,81 @@ class FastParetoOptimizer:
         """Get current hypervolume."""
         return self.hv_history[-1] if self.hv_history else 0.0
     
+    def get_report(self) -> Dict:
+        """Get comprehensive frontier analysis report."""
+        if not self.frontier:
+            return {
+                'metrics': {
+                    'frontier_size': 0,
+                    'hypervolume': 0.0
+                },
+                'recommendation': 'No solutions in frontier yet'
+            }
+        
+        frontier_dicts = self.get_frontier()
+        
+        # Calculate spacing (uniformity metric)
+        spacing = self._calculate_spacing()
+        
+        # Calculate spread (coverage metric)
+        spread = self._calculate_spread()
+        
+        return {
+            'metrics': {
+                'frontier_size': len(self.frontier),
+                'hypervolume': self.hv_history[-1] if self.hv_history else 0.0,
+                'spacing': spacing,
+                'spread': spread
+            },
+            'frontier': frontier_dicts,
+            'recommendation': self._generate_recommendation(spacing, spread)
+        }
+    
+    def _calculate_spacing(self) -> float:
+        """Calculate spacing metric (lower is better - more uniform)."""
+        if len(self.frontier) < 2:
+            return 0.0
+        
+        distances = []
+        for i, sol in enumerate(self.frontier):
+            if i > 0:
+                dist = np.linalg.norm(
+                    np.array(sol) - np.array(self.frontier[i-1])
+                )
+                distances.append(dist)
+        
+        if not distances:
+            return 0.0
+        
+        mean_dist = np.mean(distances)
+        return np.std(distances) / mean_dist if mean_dist > 0 else 0.0
+    
+    def _calculate_spread(self) -> float:
+        """Calculate spread metric (higher is better - more coverage)."""
+        if not self.frontier:
+            return 0.0
+        
+        # Calculate range for each objective
+        ranges = []
+        for i in range(self.num_objectives):
+            values = [sol[i] for sol in self.frontier]
+            ranges.append(max(values) - min(values))
+        
+        return np.mean(ranges)
+    
+    def _generate_recommendation(self, spacing: float, spread: float) -> str:
+        """Generate recommendation based on metrics."""
+        if spacing < 0.2 and spread > 1.0:
+            return "Excellent frontier: Uniform distribution with good coverage"
+        elif spacing < 0.2:
+            return "Good uniformity but limited coverage - consider expanding search space"
+        elif spread > 1.0:
+            return "Good coverage but uneven distribution - consider diversity mechanisms"
+        else:
+            return "Frontier needs improvement - increase both diversity and exploration"
+    
     def reset(self):
         """Reset optimizer state."""
         self.frontier.clear()
         self.hv_history.clear()
+        self.solution_metadata.clear()

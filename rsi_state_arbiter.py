@@ -21,51 +21,56 @@ class ArbiterState(Enum):
 class RSIStateArbiter:
     """Arbitrates between three modules to determine system health."""
     
-    def __init__(self, inefficient_k_steps: int = 10, hv_epsilon: float = 1e-9):
-        self.k_steps_for_warning = inefficient_k_steps
+    def __init__(self, k_steps_for_warning: int = 10, hv_epsilon: float = 1e-9):
+        self.k_steps_for_warning = k_steps_for_warning
         self.hv_epsilon = hv_epsilon
         self.state_history: List[Tuple[int, ArbiterState, str]] = []
         self.inefficient_counter: int = 0
         self.previous_hv: float = -1.0
         self.current_step: int = 0
     
-    def arbitrate(self, convergence_status: str, new_hv: float, 
-                  meta_learning_report: Dict) -> Tuple[ArbiterState, str]:
+    def arbitrate(self, convergence_status: Dict, new_hv: float, 
+                  meta_learning_report: Dict = None) -> ArbiterState:
         """Determine system state from module inputs."""
         self.current_step += 1
         hv_state = self._get_hv_state(new_hv)
         
-        meta_robust = meta_learning_report.get("robustness_analysis", {}).get(
-            "is_robust (CI_lower > 0)", False)
+        # Extract state string from convergence_status dict
+        conv_state = convergence_status.get('state', 'INITIALIZING')
+        
+        # Handle optional meta_learning_report
+        meta_robust = False
+        if meta_learning_report:
+            meta_robust = meta_learning_report.get("robustness_analysis", {}).get(
+                "is_robust (CI_lower > 0)", False)
         
         # Rule-based state determination
         if hv_state == 'DECREASING':
             state = ArbiterState.CRITICAL_FAILURE
             reason = "HV decreased - optimizer bug detected"
-        elif convergence_status == 'TRUE_CONVERGENCE' and hv_state == 'INCREASING':
+        elif conv_state == 'CONVERGED' and hv_state == 'INCREASING':
             state = ArbiterState.MODULE_CONFLICT
             reason = "Contradiction: convergence but HV still increasing"
-        elif convergence_status == 'TRUE_CONVERGENCE':
+        elif conv_state == 'CONVERGED':
             state = ArbiterState.TRUE_CONVERGENCE
             reason = "System converged - exploration stopped"
-        elif convergence_status == 'PRODUCTIVE_PLATEAU' and hv_state == 'INCREASING':
+        elif conv_state == 'EXPLORING' and hv_state == 'INCREASING':
             state = ArbiterState.EFFICIENT_EXPLORATION
             reason = "Excellent: Performance stagnant but HV growing"
-        elif convergence_status == 'IMPROVING' and hv_state == 'INCREASING':
+        elif conv_state == 'IMPROVING' and hv_state == 'INCREASING':
             state = ArbiterState.HEALTHY_GROWTH
             reason = "Ideal: Both performance and HV improving"
-        elif (convergence_status in ['PRODUCTIVE_PLATEAU', 'IMPROVING'] 
-              and hv_state == 'STAGNANT'):
+        elif conv_state in ['EXPLORING', 'IMPROVING'] and hv_state == 'STAGNANT':
             state = ArbiterState.INEFFICIENT_EXPLORATION
             reason = "Warning: Exploring but frontier not expanding"
         else:
             state = ArbiterState.INITIALIZING
-            reason = f"Data collection (Conv: {convergence_status}, HV: {hv_state})"
+            reason = f"Data collection (Conv: {conv_state}, HV: {hv_state})"
         
         self._update_inefficient_counter(state)
         self.state_history.append((self.current_step, state, reason))
         self.previous_hv = new_hv
-        return state, reason
+        return state
     
     def _get_hv_state(self, new_hv: float) -> str:
         if self.previous_hv < 0:
@@ -94,11 +99,23 @@ class RSIStateArbiter:
     def get_state_history(self) -> List[Tuple[int, ArbiterState, str]]:
         return self.state_history
     
-    def get_state_summary(self) -> Dict[str, str]:
-        summary = {state.name: 0 for state in ArbiterState}
+    def get_state_summary(self) -> Dict:
+        """Get state summary with counts and transition history."""
+        state_counts = {state.name: 0 for state in ArbiterState}
         for _, state, _ in self.state_history:
-            summary[state.name] += 1
+            state_counts[state.name] += 1
+        
         total = self.current_step
+        percentages = {}
         if total > 0:
-            return {s: f"{(c/total)*100:.1f}%" for s, c in summary.items()}
-        return summary
+            percentages = {s: f"{(c/total)*100:.1f}%" for s, c in state_counts.items()}
+        
+        return {
+            'state_counts': state_counts,
+            'state_percentages': percentages,
+            'transition_history': [
+                {'step': step, 'state': state.name, 'reason': reason}
+                for step, state, reason in self.state_history[-10:]  # Last 10 transitions
+            ],
+            'total_steps': total
+        }
