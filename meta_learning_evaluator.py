@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Advanced Meta-Learning Evaluator for RSI Testing
 
 This module provides statistical validation of learning acceleration in RSI systems

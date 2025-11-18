@@ -1,131 +1,144 @@
 # Enhanced RSI Test Framework
 
-Statistically robust RSI (Recursive Self-Improvement) testing framework with meta-learning evaluation, convergence detection, and Pareto optimization.
-
-## Table of Contents
-- Overview
-- Installation
-- Quick Start
-- Key Modules
-- Architecture
-- API Reference
-- Testing
-- Requirements
-- Version History
-- License
-- Contributing
-- Citation
-- Development Philosophy
+A statistically robust testing framework for Recursive Self-Improvement (RSI) systems, featuring meta-learning evaluation, convergence detection, and Pareto optimization.
 
 ## Overview
 
-This framework provides tools for diagnostic evaluation of recursive self-improvement (RSI) systems. Major components include:
+This framework provides a suite of tools for the diagnostic evaluation of RSI systems. Its major components include:
 
-- Meta-learning evaluation
-- Convergence state detection for exploration/convergence phases
-- Multi-objective Pareto optimization
+-   **Meta-Learning Evaluation**: Statistically validates learning acceleration using advanced time-series analysis.
+-   **Convergence Detection**: Offers a memory-efficient O(1) detector to distinguish between improvement, exploration, and convergence phases.
+-   **Multi-Objective Pareto Optimization**: Provides a fast optimizer for analyzing trade-offs between multiple objectives (e.g., performance vs. complexity).
 
 ## Installation
 
-```bash
-git clone https://github.com/sunghunkwag/enhanced-rsi-test-framework.git
-cd enhanced-rsi-test-framework
-pip install -r requirements.txt
-```
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/sunghunkwag/enhanced-rsi-test-framework.git
+    cd enhanced-rsi-test-framework
+    ```
+
+2.  **Install dependencies:**
+    ```bash
+    pip install -r requirements.txt
+    ```
 
 ## Quick Start
+
 ### Meta-Learning Evaluation
 ```python
 from meta_learning_evaluator import AdvancedMetaLearningEvaluator
+
+# Initialize with desired statistical parameters
 evaluator = AdvancedMetaLearningEvaluator(min_data_points=15, bootstrap_samples=5000)
-for iteration in range(100):
-    performance = evaluate_model(iteration)
-    evaluator.update(iteration, performance)
+
+# Update with performance data each iteration
+for i in range(20):
+    performance = 100 + i * 2.0 + (i % 5) # Example data
+    evaluator.update(iteration=i, performance=performance)
+
+# Generate a full report once enough data is collected
 report = evaluator.get_report()
+print(report['final_interpretation'])
 ```
 
 ### Convergence Detection
 ```python
 from optimized_convergence_detector import OptimizedEnhancedConvergenceDetector
-detector = OptimizedEnhancedConvergenceDetector(window_size=50, volatility_threshold=0.05, exploration_threshold=0.1)
-# use detector.update() per iteration
+
+detector = OptimizedEnhancedConvergenceDetector(
+    window_size=50,
+    volatility_threshold=0.05,
+    exploration_threshold=0.1
+)
+
+# Update per iteration with new hypervolume and exploration data
+status = detector.update(new_hv=150.5, exploration_activity=0.25)
+print(f"Current State: {status['state']}")
 ```
 
 ### Pareto Optimization
 ```python
 from fast_pareto_optimizer import FastParetoOptimizer
-optimizer = FastParetoOptimizer(objective_directions={
-    'performance': 'maximize',
-    'efficiency': 'maximize',
-    'complexity': 'minimize'
-})
-# use optimizer.add_solution(), optimizer.get_report()
+
+optimizer = FastParetoOptimizer(
+    objective_directions={'performance': 'maximize', 'cost': 'minimize'},
+    reference_point={'performance': 0.0, 'cost': 200.0} # Set a baseline for hypervolume
+)
+
+# Add solutions to the optimizer
+optimizer.add_solution({'performance': 0.9, 'cost': 100})
+optimizer.add_solution({'performance': 0.8, 'cost': 50})
+
+# Get a report with metrics and the current Pareto frontier
+report = optimizer.get_report()
+print(f"Frontier size: {report['metrics']['frontier_size']}")
+print(f"Hypervolume: {report['metrics']['hypervolume']:.4f}")
 ```
 
 ## Key Modules
-- meta_learning_evaluator.py: Meta-learning validation
-- optimized_convergence_detector.py: O(1) convergence detection
-- fast_pareto_optimizer.py: Pareto frontier optimization
-- rsi_state_arbiter.py: State arbitration
-- integrated_rsi_test.py: Integrated multi-phase RSI test
+
+-   `meta_learning_evaluator.py`: Meta-learning validation.
+-   `optimized_convergence_detector.py`: O(1) convergence detection.
+-   `fast_pareto_optimizer.py`: Pareto frontier optimization.
+-   `rsi_state_arbiter.py`: State arbitration logic.
+-   `integrated_rsi_test.py`: An integrated, multi-phase RSI test harness.
 
 ## Architecture
+
 ```
 enhanced-rsi-test-framework/
+├── fast_pareto_optimizer.py
+├── integrated_rsi_test.py
 ├── meta_learning_evaluator.py
 ├── optimized_convergence_detector.py
-├── fast_pareto_optimizer.py
 ├── rsi_state_arbiter.py
-├── integrated_rsi_test.py
-├── test_framework.py
+├── test_integration.py
 ├── requirements.txt
 ├── CHANGELOG.md
-├── ANALYSIS_REPORT.md
 ├── LICENSE
 └── README.md
 ```
 
 ## API Reference
-API methods follow Python docstrings for each module. Major module constructors and methods:
-- AdvancedMetaLearningEvaluator: `update()`, `get_report()`
-- OptimizedEnhancedConvergenceDetector: `update()`, `get_statistics()`, `reset()`
-- FastParetoOptimizer: `add_solution()`, `get_report()`, `calculate_hypervolume()`
-- RSIStateArbiter: `arbitrate()`, `get_state_summary()`, `check_for_persistent_warning()`
-- IntegratedRSITest: `update()`, `get_summary()`, `reset()`
+
+API methods are documented via Python docstrings within each module. Key methods include:
+
+-   **AdvancedMetaLearningEvaluator**: `update()`, `get_report()`
+-   **OptimizedEnhancedConvergenceDetector**: `update()`, `get_statistics()`, `reset()`
+-   **FastParetoOptimizer**: `add_solution()`, `get_report()`, `reset()`
+-   **RSIStateArbiter**: `arbitrate()`, `get_state_summary()`
+-   **IntegratedRSITest**: `update()`, `get_summary()`, `reset()`
 
 ## Testing
-Run the full test suite:
+
+This project uses `pytest` for automated testing. To run the full test suite:
+
 ```bash
-python test_framework.py
+pytest
 ```
-All tests should pass.
+All tests are expected to pass.
 
 ## Requirements
-- Python >= 3.8
-- numpy >= 1.24.0
-- scipy >= 1.10.0
-- sortedcontainers >= 2.4.0
+
+-   Python >= 3.8
+-   numpy >= 1.24.0
+-   scipy >= 1.10.0
+-   sortedcontainers >= 2.4.0
+-   pytest >= 7.0.0 (for testing)
 
 ## Version History
-See CHANGELOG.md for details. Current: v0.2.0 (API fixes, comprehensive test suite)
+
+See `CHANGELOG.md` for a detailed history of changes.
 
 ## License
-MIT License
+
+This project is licensed under the MIT License. See the `LICENSE` file for details.
 
 ## Contributing
-Contributions and additional module implementations are encouraged. Please fork and submit PRs for enhancements, new detection strategies, visualizations, and benchmarks.
 
-## Citation
-If used in academic work:
-```
-@software{enhanced_rsi_framework,
-  author = {Kwag, Sunghun},
-  title = {Enhanced RSI Test Framework},
-  version = {0.2.0},
-  year = {2025},
-  url = {https://github.com/sunghunkwag/enhanced-rsi-test-framework}
-}
-```
+Contributions are welcome. Please fork the repository and submit a pull request with your enhancements, new features, or bug fixes.
 
 ## Development Philosophy
-Iterative development and continuous improvement, with statistical rigor, computational efficiency, and full production readiness throughout all modules.
+
+This framework is developed with a focus on iterative improvement, statistical rigor, computational efficiency, and production readiness.
