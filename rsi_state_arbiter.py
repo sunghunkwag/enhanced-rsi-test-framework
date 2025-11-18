@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """RSI State Arbiter - Module Consistency Verification
 
 Inter-module consistency validation for RSI testing framework.
