@@ -2,7 +2,7 @@
 
 | Session | Domain | Status | Date | Candidates |
 |---------|--------|--------|------|------------|
-| 1 | Mathematics (Category Theory, Algebraic Geometry, Number Theory, Type Theory, Topos Theory) | NOT_STARTED | - | - |
+| 1 | Mathematics (Category Theory, Algebraic Geometry, Number Theory, Type Theory, Topos Theory) | COMPLETE | 2026-03-26 | 3 (internal site construction, Yoneda embedding, realizability topoi) |
 | 2 | Physics (Phase Transitions, Symmetry Breaking, Gauge Theory, Renormalization, Dualities) | NOT_STARTED | - | - |
 | 3 | Ancient Texts (I Ching, Sanskrit Grammar, Kabbalah, Alchemical Texts, Mayan Mathematics) | NOT_STARTED | - | - |
 | 4 | Computer Science (Lambda Calculus, Automata Theory, Complexity Theory, Type Systems, Proof Assistants) | NOT_STARTED | - | - |
