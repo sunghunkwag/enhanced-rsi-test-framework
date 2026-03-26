@@ -3,10 +3,10 @@
 ## [2026-03-26] — INVESTIGATION Session 1 (Mathematics)
 
 ### Monitoring
-- arxiv: PENDING (agent still running)
-- GitHub: PENDING (agent still running)
-- Staleness: N/A (first session)
-- Query evolution: N/A
+- arxiv: 17 scanned, 17 new, 7 relevant
+- GitHub: 15 scanned, 15 new, 2 relevant (OPEN), 10 blacklist matches
+- Staleness: 0% (first session)
+- Query evolution: N/A (baseline established)
 
 ### Main work — Session 1: Mathematics
 
@@ -94,9 +94,9 @@ The Topos Theory investigation answered the KEY QUESTION: Can a system change it
 Every genuine format change follows: identify limitation -> enlarge category (new objects/morphisms/base) -> embed old faithfully -> demonstrate new expressiveness. The enlargement must come from outside the current format (except for bounded topos construction).
 
 ### Dedup stats
-- Papers read (cumulative): PENDING
-- Repos analyzed (cumulative): PENDING
+- Papers read (cumulative): 17
+- Repos analyzed (cumulative): 15
 - Code fingerprints logged: 0
 
 ### Assessment
-COMPLETE (investigation). Monitoring pending agent completion.
+COMPLETE. All 5 sub-domains investigated. Monitoring complete. 3 transplant candidates archived.
